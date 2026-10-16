@@ -16,6 +16,8 @@
 .training-table td:nth-child(4) input{width:160px;min-width:130px}
 .training-contract-controls{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 .training-contract-controls .record-status{margin-right:8px}
+.training-contract-section button:disabled,.training-contract-section button:disabled:hover{background:#e5e9e3;border-color:#d3dbd0;color:#738071;cursor:not-allowed;opacity:1}
+.training-contract-section input:disabled{background:#f0f2ee;border-color:#d9e0d5;color:#788276;cursor:not-allowed;opacity:1}
 .training-contract-section .training-days-heading{margin-top:18px}
 @media(max-width:700px){.training-contract-heading{flex-direction:column}.training-contract-controls{justify-content:flex-start}}
 

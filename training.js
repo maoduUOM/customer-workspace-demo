@@ -46,6 +46,7 @@ function renderTraining(){
     const badge=el('span',historical?'Historical':'Current','record-status '+(historical?'status-Previous':'status-Current'));
     const available=Number(p.available);
     const controls=el('div',undefined,'training-contract-controls'),edit=el('button','Edit period'),remove=el('button','Delete period','delete-button');
+    edit.disabled=remove.disabled=historical;
     edit.onclick=()=>editTrainingPeriod(false,p.id);remove.onclick=()=>deleteTrainingPeriod(p.id);
     controls.append(badge,edit,remove);heading.append(identity,controls);section.append(heading);
     const daysHead=el('div',undefined,'training-days-heading'),add=el('button','+ Add training day','primary');
@@ -61,10 +62,12 @@ function renderTraining(){
       const row=el('tr');[date(s.date),s.title,s.hedContact||'—'].forEach(v=>row.append(el('td',String(v))));
       const locationCell=el('td'),locationInput=el('input');
       locationInput.type='text';locationInput.value=s.location||'';locationInput.placeholder='Add location';locationInput.setAttribute('aria-label',s.title+' · Location');
+      locationInput.disabled=historical;
       locationInput.oninput=()=>{const source=p.sessions.find(x=>x.id===s.id);source.location=locationInput.value;persist()};
       locationCell.append(locationInput);row.append(locationCell);
       [Number(s.days).toFixed(2),s.balance.toFixed(2),s.summary||'—'].forEach(v=>row.append(el('td',String(v))));
       const cell=el('td'),group=el('div',undefined,'action-group'),editDay=el('button','Edit'),removeDay=el('button','Delete','delete-button');
+      editDay.disabled=removeDay.disabled=historical;
       editDay.onclick=()=>editTrainingSession(s.id,p.id);removeDay.setAttribute('aria-label','Delete training day '+s.title);removeDay.onclick=()=>deleteTrainingSession(p.id,s.id);
       group.append(editDay,removeDay);cell.append(group);row.append(cell);tbody.append(row);
     });
