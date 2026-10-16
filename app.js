@@ -55,15 +55,26 @@ function renderRows(){
       if(i===3&&days!==null){cell.className=days<60?'days-critical':days<100?'days-warning':'';cell.title=days<60?'Under 60 contracted days remaining':days<100?'Under 100 contracted days remaining':'Contracted days remaining'}
       row.append(cell)
     });
-    const cell=el('td'),button=el('button',archived?'Restore':'Archive');
+    const cell=el('td'),actions=el('div',undefined,'action-group customer-actions'),button=el('button',archived?'Restore':'Archive'),remove=el('button','Delete','delete-button');
     button.setAttribute('aria-label',button.textContent+' '+r.name);
     if(!archived&&!canArchive(r)){button.disabled=true;button.title=archiveMessage}
     button.onclick=()=>{if(r.status!=='Archive'&&!canArchive(r))return;r.status=archived?'Active':'Archive';persist();renderRows()};
-    cell.append(button);row.append(cell);$('rows').append(row)
+    remove.setAttribute('aria-label','Delete '+r.name);
+    remove.onclick=()=>deleteCustomer(r);
+    actions.append(button,remove);cell.append(actions);row.append(cell);$('rows').append(row)
   });
   if(!all.length){const row=el('tr'),cell=el('td','No matching trusts.','empty-row');cell.colSpan=impl?15:11;row.append(cell);$('rows').append(row)}
   $('listLabel').textContent=all.length?`Showing ${(page-1)*size+1}–${Math.min(page*size,all.length)} of ${all.length} trusts`:'No matching trusts';
   $('pageLabel').textContent=`Page ${page} of ${pages}`;$('prevPage').disabled=page===1;$('nextPage').disabled=page===pages
+}
+function deleteCustomer(r){
+  const index=data.indexOf(r);if(index<0)return;
+  if(!window.confirm('Delete '+r.name+' and all its contacts, contracts and training records from this browser?'))return;
+  const wasCurrent=current===r;
+  data.splice(index,1);if(wasCurrent)current=data[0]||null;
+  const saved=persist();renderRows();
+  const undo=el('button','Undo');undo.onclick=()=>{data.splice(index,0,r);if(wasCurrent)current=r;persist();renderRows()};
+  if(saved)showUndo(r.name+' deleted.',undo);
 }
 function tab(name){activeTab=name;document.querySelectorAll('.tabpage').forEach(e=>e.classList.toggle('hide',e.id!==name));document.querySelectorAll('[data-tab]').forEach(e=>e.classList.toggle('active',e.dataset.tab===name))}
 function showDetail(id){current=data.find(r=>r.id===id)||data[0];selectedTrainingId=current.trainingCurrentId;trainingPage=1;$('trainingSearch').value='';$('list').classList.add('hide');$('detail').classList.remove('hide');$('crumb').textContent=' / Customer details';refresh();tab('overview');history.replaceState(null,'','#trust/'+current.id);window.scrollTo(0,0)}
