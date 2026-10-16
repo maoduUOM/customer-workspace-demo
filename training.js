@@ -33,16 +33,17 @@ function usedDays(p){return roundDays(p.sessions.reduce((n,s)=>n+Number(s.days),
 function syncTrainingSummary(r){const p=r.trainingPeriods?.find(p=>p.id===r.trainingCurrentId);r.training=p?roundDays(p.available-usedDays(p)):0;const c=r.contracts.find(c=>c.status==='Current');if(c)c.training=r.training}
 function setTrainingRemaining(r,remaining){const p=r.trainingPeriods.find(p=>p.id===r.trainingCurrentId);if(p)p.available=roundDays(Number(remaining)+usedDays(p))}
 function trainingPeriod(){return current.trainingPeriods.find(p=>p.id===selectedTrainingId)||current.trainingPeriods.find(p=>p.id===current.trainingCurrentId)||current.trainingPeriods[0]}
+function historicalTrainingPeriod(p,contract){return p.id!==current.trainingCurrentId||p.end<todayISO()||contract?.status==='Previous'||Boolean(contract?.end&&contract.end<todayISO())}
 function renderTraining(){
   const host=$('trainingPeriodRows'),q=$('trainingSearch').value.toLowerCase().trim();host.replaceChildren();
   if(!current.trainingPeriods.length){host.append(el('p','No training periods. Add a period to record training.','record-empty'));return}
   [...current.trainingPeriods].sort((a,b)=>b.start.localeCompare(a.start)).forEach(p=>{
     const contract=current.contracts.find(c=>c.id===p.contractId)||current.contracts.find(c=>c.start===p.start&&c.end===p.end);
+    const historical=historicalTrainingPeriod(p,contract);
     const section=el('section',undefined,'training-contract-section');
     const heading=el('div',undefined,'training-contract-heading'),identity=el('div');
-    identity.append(el('span',contract?'Contract '+contract.id:'Training period','record-eyebrow'),el('h3',date(p.start)+' – '+date(p.end)));
-    if(contract&&(contract.start!==p.start||contract.end!==p.end))identity.append(el('p','Contract dates: '+date(contract.start)+' – '+date(contract.end),'training-contract-dates'));
-    const badge=el('span',p.id===current.trainingCurrentId?'Current':'Historical','record-status '+(p.id===current.trainingCurrentId?'status-Current':'status-Previous'));
+    identity.append(el('h3','Contract dates: '+date(contract?.start||p.start)+' – '+date(contract?.end||p.end)));
+    const badge=el('span',historical?'Historical':'Current','record-status '+(historical?'status-Previous':'status-Current'));
     heading.append(identity,badge);section.append(heading);
     const summary=el('div',undefined,'training-period-summary'),metrics=el('div',undefined,'record-metrics');
     const available=Number(p.available),used=usedDays(p),remaining=roundDays(available-used);
@@ -51,21 +52,21 @@ function renderTraining(){
     edit.onclick=()=>editTrainingPeriod(false,p.id);remove.onclick=()=>deleteTrainingPeriod(p.id);
     actions.append(edit,remove);summary.append(metrics,actions);section.append(summary);
     const track=el('div',undefined,'period-progress'),fill=el('span');fill.style.width=(available?Math.min(100,Math.max(0,used/available*100)):0)+'%';track.append(fill);section.append(track);
-    const daysHead=el('div',undefined,'training-days-heading'),title=el('h4',p.sessions.length+' training '+(p.sessions.length===1?'day':'days')),add=el('button','+ Add training day','primary');
-    add.onclick=()=>editTrainingSession(undefined,p.id);daysHead.append(title,add);section.append(daysHead);
+    const daysHead=el('div',undefined,'training-days-heading'),add=el('button','+ Add training day','primary');
+    add.disabled=historical;
+    if(historical)add.title='Training days cannot be added to a historical contract.';
+    add.onclick=()=>editTrainingSession(undefined,p.id);daysHead.append(add);section.append(daysHead);
     const wrap=el('div',undefined,'tablewrap'),table=el('table',undefined,'simple-table training-table'),thead=el('thead'),headerRow=el('tr'),tbody=el('tbody');
     for(const label of ['Training date','Title','HED contact','Location','Days taken','Days remaining','Summary','Action'])headerRow.append(el('th',label));
     thead.append(headerRow);table.append(thead,tbody);wrap.append(table);section.append(wrap);
     let balance=available;
     const rows=[...p.sessions].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id)).map(s=>{balance=roundDays(balance-s.days);return {...s,balance}}).filter(s=>(s.title+' '+s.hedContact+' '+s.location+' '+s.summary).toLowerCase().includes(q));
-    if(q)title.textContent=rows.length+' of '+p.sessions.length+' training days';
     rows.forEach(s=>{
       const row=el('tr');[date(s.date),s.title,s.hedContact||'—'].forEach(v=>row.append(el('td',String(v))));
-      const locationCell=el('td'),locationSelect=el('select');
-      [['','Choose location'],['Teams','Teams'],['On-site','On-site']].forEach(([value,label])=>locationSelect.add(new Option(label,value)));
-      locationSelect.value=s.location||'';locationSelect.setAttribute('aria-label',s.title+' · Location');
-      locationSelect.onchange=()=>{const source=p.sessions.find(x=>x.id===s.id);source.location=locationSelect.value;persist()};
-      locationCell.append(locationSelect);row.append(locationCell);
+      const locationCell=el('td'),locationInput=el('input');
+      locationInput.type='text';locationInput.value=s.location||'';locationInput.placeholder='Add location';locationInput.setAttribute('aria-label',s.title+' · Location');
+      locationInput.oninput=()=>{const source=p.sessions.find(x=>x.id===s.id);source.location=locationInput.value;persist()};
+      locationCell.append(locationInput);row.append(locationCell);
       [Number(s.days).toFixed(2),s.balance.toFixed(2),s.summary||'—'].forEach(v=>row.append(el('td',String(v))));
       const cell=el('td'),group=el('div',undefined,'action-group'),editDay=el('button','Edit'),removeDay=el('button','Delete','delete-button');
       editDay.onclick=()=>editTrainingSession(s.id,p.id);removeDay.setAttribute('aria-label','Delete training day '+s.title);removeDay.onclick=()=>deleteTrainingSession(p.id,s.id);
@@ -78,7 +79,7 @@ function renderTraining(){
 function deleteTrainingPeriod(periodId){const owner=current,index=owner.trainingPeriods.findIndex(p=>p.id===periodId);if(index<0)return;const previousCurrent=owner.trainingCurrentId,previousSelected=selectedTrainingId;const [removed]=owner.trainingPeriods.splice(index,1);if(previousCurrent===periodId)owner.trainingCurrentId=owner.trainingPeriods.length?[...owner.trainingPeriods].sort((a,b)=>b.start.localeCompare(a.start))[0].id:'';if(previousSelected===periodId)selectedTrainingId=owner.trainingCurrentId;trainingPage=1;syncTrainingSummary(owner);const saved=persist();refresh();renderRows();const undo=el('button','Undo');undo.onclick=()=>{owner.trainingPeriods.splice(index,0,removed);owner.trainingCurrentId=previousCurrent;syncTrainingSummary(owner);persist();if(current.id===owner.id){selectedTrainingId=previousSelected;refresh();renderRows()}};if(saved)showUndo('Training period deleted.'+(removed.sessions.length?' Its '+removed.sessions.length+' session'+(removed.sessions.length===1?' was':'s were')+' removed.':''),undo)}
 function deleteTrainingSession(periodId,sessionId){const owner=current,period=owner.trainingPeriods.find(p=>p.id===periodId),index=period?.sessions.findIndex(s=>s.id===sessionId)??-1;if(index<0)return;const [removed]=period.sessions.splice(index,1);syncTrainingSummary(owner);const saved=persist();refresh();const undo=el('button','Undo');undo.onclick=()=>{period.sessions.splice(index,0,removed);syncTrainingSummary(owner);persist();if(current.id===owner.id)refresh()};if(saved)showUndo('Training session deleted.',undo)}
 function rejectInput(input,message){input.setCustomValidity(message);input.reportValidity();input.oninput=()=>input.setCustomValidity('');return false}
-function editTrainingSession(id,periodId){const p=current.trainingPeriods.find(p=>p.id===periodId)||trainingPeriod(),s=p.sessions.find(s=>s.id===id)||{date:p.start,title:'',location:'',days:0.5,hedContact:'',summary:''};editor(id?'Edit training day':'Add training day',[{key:'date',label:'Training date',type:'date',value:s.date,required:true},{key:'title',label:'Title',value:s.title,required:true},{key:'hedContact',label:'HED contact',value:s.hedContact},{key:'location',label:'Location',value:s.location,options:['','Teams','On-site'],placeholder:'Choose location',required:true},{key:'days',label:'Days taken',type:'number',value:s.days,required:true},{key:'summary',label:'Summary',type:'textarea',value:s.summary,wide:true}],(v,inputs)=>{if(v.date<p.start||v.date>p.end)return rejectInput(inputs.date,'Choose a date within the selected contract period.');if(v.days<=0)return rejectInput(inputs.days,'Days taken must be greater than zero.');const used=p.sessions.filter(x=>x.id!==id).reduce((n,x)=>n+x.days,0);if(roundDays(used+v.days)>p.available)return rejectInput(inputs.days,'This exceeds the days available. Edit the period allowance first if additional days have been agreed.');if(id)Object.assign(s,v);else p.sessions.push({id:'T-'+crypto.randomUUID(),...v});syncTrainingSummary(current)})}
+function editTrainingSession(id,periodId){const p=current.trainingPeriods.find(p=>p.id===periodId)||trainingPeriod(),s=p.sessions.find(s=>s.id===id)||{date:p.start,title:'',location:'',days:0.5,hedContact:'',summary:''};editor(id?'Edit training day':'Add training day',[{key:'date',label:'Training date',type:'date',value:s.date,required:true},{key:'title',label:'Title',value:s.title,required:true},{key:'hedContact',label:'HED contact',value:s.hedContact},{key:'location',label:'Location',value:s.location,placeholder:'Enter location',required:true},{key:'days',label:'Days taken',type:'number',value:s.days,required:true},{key:'summary',label:'Summary',type:'textarea',value:s.summary,wide:true}],(v,inputs)=>{if(v.date<p.start||v.date>p.end)return rejectInput(inputs.date,'Choose a date within the selected contract period.');if(v.days<=0)return rejectInput(inputs.days,'Days taken must be greater than zero.');const used=p.sessions.filter(x=>x.id!==id).reduce((n,x)=>n+x.days,0);if(roundDays(used+v.days)>p.available)return rejectInput(inputs.days,'This exceeds the days available. Edit the period allowance first if additional days have been agreed.');if(id)Object.assign(s,v);else p.sessions.push({id:'T-'+crypto.randomUUID(),...v});syncTrainingSummary(current)})}
 function editTrainingPeriod(create=false,periodId){
   const p=create?{contractId:'',start:'',end:'',available:0,sessions:[]}:current.trainingPeriods.find(p=>p.id===periodId)||trainingPeriod();
   editor(create?'Add training period':'Edit training period',[
