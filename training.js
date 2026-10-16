@@ -2,6 +2,12 @@ let selectedTrainingId='',trainingPage=1;
 for(const r of data){if(!r.trainingPeriods){const end=r.end||'2027-04-30',d=new Date(end+'T12:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-1);d.setUTCDate(d.getUTCDate()+1);r.trainingPeriods=[{id:'TP-initial',start:d.toISOString().slice(0,10),end,available:Number(r.training)||0,sessions:[]}];r.trainingCurrentId=r.trainingPeriods[0].id}r.trainingCurrentId??=r.trainingPeriods[0]?.id;for(const p of r.trainingPeriods){p.contractId??=r.contracts.find(c=>c.start===p.start&&c.end===p.end)?.id||(p.id===r.trainingCurrentId?currentContract(r)?.id:'');for(const s of p.sessions){s.hedContact??=s.contact||'';s.location??='';delete s.contact}}}
 const isoShift=(value,days)=>{const d=new Date(value+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10)};
 const sampleDate=(start,end,fraction)=>{const span=Math.max(0,Math.round((Date.parse(end+'T12:00:00Z')-Date.parse(start+'T12:00:00Z'))/86400000));return isoShift(start,Math.round(span*fraction))};
+const demoTrainingDays=[
+  ['Getting started','Alex Mercer','Teams',.5,'Overview of core workflows and user access.'],
+  ['Data upload workshop','Sam Ellis','On-site',.5,'Walked through sample upload and validation steps.'],
+  ['Reporting refresher','Jordan Hart','Teams',.5,'Built and reviewed example reports.']
+];
+const sampleTrainingDays=(start,end,prefix)=>demoTrainingDays.map(([title,hedContact,location,days,summary],i)=>({id:prefix+i,date:sampleDate(start,end,[.22,.51,.78][i]),title,hedContact,location,days,summary}));
 let examplesAdded=false;
 for(const [index,id] of ['DEMO001','DEMO002','DEMO003'].entries()){
   const r=data.find(x=>x.id===id),c=r?.contracts?.[0],p=r?.trainingPeriods?.[0];
@@ -18,15 +24,22 @@ for(const [index,id] of ['DEMO001','DEMO002','DEMO003'].entries()){
     {id:'T-example-intro',date:sampleDate(previousStart,previousEnd,.25),title:'Platform introduction',hedContact:'Alex Mercer',location:'Teams',days:.5,summary:'Introduction to access, navigation and standard reports.'},
     {id:'T-example-data',date:sampleDate(previousStart,previousEnd,.62),title:'Data quality workshop',hedContact:'Sam Ellis',location:'On-site',days:1,summary:'Practised validation checks with synthetic examples.'}
   ]});
-  const examples=[
-    ['Getting started','Alex Mercer','Teams',.5,'Overview of core workflows and user access.'],
-    ['Data upload workshop','Sam Ellis','On-site',.5,'Walked through sample upload and validation steps.'],
-    ['Reporting refresher','Jordan Hart','Teams',.5,'Built and reviewed example reports.']
-  ];
-  p.sessions=examples.map(([title,hedContact,location,days,summary],i)=>({id:'T-example-current-'+i,date:sampleDate(activeStart,activeEnd,[.22,.51,.78][i]),title,hedContact,location,days,summary}));
+  p.sessions=sampleTrainingDays(activeStart,activeEnd,'T-example-current-');
   if(index===0){const nextStart=isoShift(c.end,1),nextEnd=isoShift(nextStart,364);r.contracts.push({id:id+'-NEXT',status:'Draft',start:nextStart,end:nextEnd,accountManager:r.manager,cost:'',autoRenew:false,comment:'Proposed synthetic renewal.',training:0})}
   syncTrainingSummary(r);
   r.demoExamplesVersion=1;examplesAdded=true;
+}
+// Older browser copies may have several contracts while their current training period is empty.
+// Add synthetic days once without changing contracts, allowances or existing training entries.
+for(const id of ['DEMO001','DEMO002','DEMO003']){
+  const r=data.find(x=>x.id===id);
+  if(!r||Number(r.demoExamplesVersion)>=2)continue;
+  const c=currentContract(r),p=r.trainingPeriods.find(x=>x.id===r.trainingCurrentId);
+  if(c&&p&&p.sessions.length===0&&Number(p.available)>=1.5){
+    const start=c.start>p.start?c.start:p.start,end=c.end<p.end?c.end:p.end;
+    if(start<=end){p.sessions=sampleTrainingDays(start,end,'T-example-refill-');syncTrainingSummary(r)}
+  }
+  r.demoExamplesVersion=2;examplesAdded=true;
 }
 function roundDays(n){return Math.round((n+Number.EPSILON)*100)/100}
 function usedDays(p){return roundDays(p.sessions.reduce((n,s)=>n+Number(s.days),0))}
