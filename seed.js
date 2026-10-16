@@ -5,11 +5,13 @@ const managers=['Morgan Vale','Riley Stone','Avery Reed','Taylor Quinn'];
 const places=['Ashford Vale','Birchwood','Cedar Valley','Dalesbridge','Eastmere','Fernborough','Greenhaven','Highbrook','Ivybridge Vale','Juniper Coast','Kingsmere','Larchfield','Meadowbrook','Northhaven','Oakbridge'];
 const types=['University Hospitals NHS Foundation Trust','Community Health NHS Trust'];
 const items=['Licence received','User accounts requested','User accounts received','Super users defined','Caldicott form received','Access levels defined','Revalidation access','M Share — CCGs','M Share — GP cluster','M Share — Divisional structure','SUS DSA signed and returned','IP data enabled','OP data enabled','A&E data enabled','Initial training date agreed'];
+const demoToday=new Date();
+const demoEndInDays=days=>new Date(Date.UTC(demoToday.getFullYear(),demoToday.getMonth(),demoToday.getDate()+days));
 
 if(!Array.isArray(data)){
   data=places.map((place,i)=>{
     const archived=i>=5&&i<10;
-    const end=archived?new Date(Date.UTC(2026,i-4,1)):new Date(Date.UTC(2027,3+i%10,1+(i*7)%27));
+    const end=archived?new Date(Date.UTC(2026,i-4,1)):i===0?demoEndInDays(45):i===3?demoEndInDays(80):new Date(Date.UTC(2027,3+i%10,1+(i*7)%27));
     const first=i===0;
     return {
       id:'DEMO'+String(i+1).padStart(3,'0'),
@@ -20,6 +22,7 @@ if(!Array.isArray(data)){
       end:end.toISOString().slice(0,10),
       training:2+i%6,
       start:archived?'2025-01-01':'2026-05-01',
+      ...(i===3?{trainingPeriods:[{id:'TP-initial',start:'2026-05-01',end:end.toISOString().slice(0,10),available:5,sessions:[]}],trainingCurrentId:'TP-initial'}:{}),
       review:'2026-11-'+String(2+i).padStart(2,'0'),
       last:String(18+i*7),
       address:(20+i)+' Example Lane, '+place,
