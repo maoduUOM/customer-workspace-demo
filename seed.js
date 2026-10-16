@@ -8,7 +8,8 @@ const items=['Licence received','User accounts requested','User accounts receive
 
 if(!Array.isArray(data)){
   data=places.map((place,i)=>{
-    const end=new Date(Date.UTC(2027,3+i%10,1+(i*7)%27));
+    const archived=i>=5&&i<10;
+    const end=archived?new Date(Date.UTC(2026,i-4,1)):new Date(Date.UTC(2027,3+i%10,1+(i*7)%27));
     const first=i===0;
     return {
       id:'DEMO'+String(i+1).padStart(3,'0'),
@@ -18,7 +19,7 @@ if(!Array.isArray(data)){
       status:i<5?'Active':i<10?'Archived':'Implementation',
       end:end.toISOString().slice(0,10),
       training:2+i%6,
-      start:'2026-05-01',
+      start:archived?'2025-01-01':'2026-05-01',
       review:'2026-11-'+String(2+i).padStart(2,'0'),
       last:String(18+i*7),
       address:(20+i)+' Example Lane, '+place,
