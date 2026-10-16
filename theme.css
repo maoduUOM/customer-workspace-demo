@@ -43,5 +43,6 @@ th,.implementation-table th{font-size:.75rem;line-height:1.4;font-weight:650}
 .licence-summary li{padding:8px 10px;background:#f1f6ec;border:1px solid #dfe9d7;border-radius:7px;overflow-wrap:anywhere}
 .account-empty{margin:0;font-size:.9375rem}
 .account-group .textbutton{align-self:flex-start;margin-top:2px}
+.back-to-list{font-size:14px}
 @media(max-width:1100px){.account-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.account-group:nth-child(2){border-right:0;padding-right:0}.account-group:last-child{grid-column:1/-1;border-top:1px solid var(--line);padding-top:22px}}
 @media(max-width:700px){.account-columns{grid-template-columns:1fr}.account-group,.account-group:nth-child(2){border-right:0;padding-right:0;border-bottom:1px solid var(--line);padding-bottom:20px}.account-group:last-child{grid-column:auto;border:0;padding:0}}
