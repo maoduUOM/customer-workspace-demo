@@ -22,6 +22,7 @@ function daysUntil(end,today=new Date()){if(!/^\d{4}-\d{2}-\d{2}$/.test(end||'')
 const todayISO=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 const canArchive=r=>r.contracts.length>0&&r.contracts.every(c=>c.end&&c.end<todayISO());
 const archiveMessage='Archive is available only after every contract end date has passed.';
+for(const r of data)if(r.status==='Archive'&&!canArchive(r))r.status='Active';
 const daysRemainingFor=r=>r.status==='Archive'?0:daysUntil(contractEnd(r));
 const trainingDaysFor=r=>r.status==='Archive'?0:Number(r.training)||0;
 const daysText=n=>n===null?'Not set':n+' '+(n===1?'day':'days');
