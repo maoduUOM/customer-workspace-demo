@@ -20,8 +20,8 @@ const currentContract=r=>r.contracts.find(c=>c.status==='Current');
 const contractEnd=r=>currentContract(r)?.end||'';
 function daysUntil(end,today=new Date()){if(!/^\d{4}-\d{2}-\d{2}$/.test(end||''))return null;const [y,m,d]=end.split('-').map(Number);const target=Date.UTC(y,m-1,d),start=Date.UTC(today.getFullYear(),today.getMonth(),today.getDate());return Math.max(0,Math.round((target-start)/86400000))}
 const todayISO=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
-const canArchive=r=>r.contracts.length>0&&r.contracts.every(c=>c.end&&c.end<todayISO());
-const archiveMessage='Archive is available only after every contract end date has passed.';
+const canArchive=r=>{const signed=r.contracts.filter(c=>c.status!=='Draft');return signed.length>0&&signed.every(c=>c.end&&c.end<todayISO())};
+const archiveMessage='Archive is available only after all non-draft contracts have ended.';
 for(const r of data)if(r.status==='Archive'&&!canArchive(r))r.status='Active';
 const daysRemainingFor=r=>r.status==='Archive'?0:daysUntil(contractEnd(r));
 const trainingDaysFor=r=>r.status==='Archive'?0:Number(r.training)||0;
@@ -146,7 +146,7 @@ function editContract(id){
   ],(v,inputs)=>{
     if(current.contracts.some(x=>x!==c&&x.id===v.id)){inputs.id.setCustomValidity('Use a unique contract ID.');inputs.id.reportValidity();inputs.id.oninput=()=>inputs.id.setCustomValidity('');return false}
     if(v.end<v.start){inputs.end.setCustomValidity('End date must be on or after start date.');inputs.end.reportValidity();inputs.end.oninput=()=>inputs.end.setCustomValidity('');return false}
-    if(current.status==='Archive'&&v.end>=todayISO())return rejectInput(inputs.end,'Restore this customer before adding a contract that ends today or later.');
+    if(current.status==='Archive'&&v.status!=='Draft'&&v.end>=todayISO())return rejectInput(inputs.end,'Restore this customer before adding a non-draft contract that ends today or later.');
     if(v.status==='Current'){
       current.contracts.forEach(x=>{if(x!==c&&x.status==='Current')x.status='Previous'});
       Object.assign(current,{start:v.start,end:v.end,autoRenew:v.autoRenew});
