@@ -8,6 +8,10 @@ const demoTrainingDays=[
   ['Reporting refresher','Jordan Hart','Teams',.5,'Built and reviewed example reports.']
 ];
 const sampleTrainingDays=(start,end,prefix)=>demoTrainingDays.map(([title,hedContact,location,days,summary],i)=>({id:prefix+i,date:sampleDate(start,end,[.22,.51,.78][i]),title,hedContact,location,days,summary}));
+const sampleHistoricalDays=(start,end,prefix)=>[
+  {id:prefix+'intro',date:sampleDate(start,end,.25),title:'Platform introduction',hedContact:'Alex Mercer',location:'Teams',days:.5,summary:'Introduction to access, navigation and standard reports.'},
+  {id:prefix+'data',date:sampleDate(start,end,.62),title:'Data quality workshop',hedContact:'Sam Ellis',location:'On-site',days:1,summary:'Practised validation checks with synthetic examples.'}
+];
 let examplesAdded=false;
 for(const [index,id] of ['DEMO001','DEMO002','DEMO003'].entries()){
   const r=data.find(x=>x.id===id),c=r?.contracts?.[0],p=r?.trainingPeriods?.[0];
@@ -20,10 +24,7 @@ for(const [index,id] of ['DEMO001','DEMO002','DEMO003'].entries()){
   if(!c.comment)c.comment='Current synthetic service agreement.';
   const previousEnd=isoShift(c.start<p.start?c.start:p.start,-1),previousStart=isoShift(previousEnd,-364);
   r.contracts.unshift({id:id+'-PREV',status:'Previous',start:previousStart,end:previousEnd,accountManager:r.manager,cost:2800+index*350,autoRenew:false,comment:'Completed synthetic service agreement.',training:1.5});
-  r.trainingPeriods.push({id:'TP-example-previous',contractId:id+'-PREV',start:previousStart,end:previousEnd,available:3,sessions:[
-    {id:'T-example-intro',date:sampleDate(previousStart,previousEnd,.25),title:'Platform introduction',hedContact:'Alex Mercer',location:'Teams',days:.5,summary:'Introduction to access, navigation and standard reports.'},
-    {id:'T-example-data',date:sampleDate(previousStart,previousEnd,.62),title:'Data quality workshop',hedContact:'Sam Ellis',location:'On-site',days:1,summary:'Practised validation checks with synthetic examples.'}
-  ]});
+  r.trainingPeriods.push({id:'TP-example-previous',contractId:id+'-PREV',start:previousStart,end:previousEnd,available:3,sessions:sampleHistoricalDays(previousStart,previousEnd,'T-example-')});
   p.sessions=sampleTrainingDays(activeStart,activeEnd,'T-example-current-');
   if(index===0){const nextStart=isoShift(c.end,1),nextEnd=isoShift(nextStart,364);r.contracts.push({id:id+'-NEXT',status:'Draft',start:nextStart,end:nextEnd,accountManager:r.manager,cost:'',autoRenew:false,comment:'Proposed synthetic renewal.',training:0})}
   syncTrainingSummary(r);
@@ -40,6 +41,32 @@ for(const id of ['DEMO001','DEMO002','DEMO003']){
     if(start<=end){p.sessions=sampleTrainingDays(start,end,'T-example-refill-');syncTrainingSummary(r)}
   }
   r.demoExamplesVersion=2;examplesAdded=true;
+}
+// Populate missing historical demo training in older saved browser copies.
+for(const [index,id] of ['DEMO001','DEMO002','DEMO003'].entries()){
+  const r=data.find(x=>x.id===id);
+  if(!r||Number(r.demoExamplesVersion)>=3)continue;
+  const current=r.contracts.find(c=>c.status==='Current');
+  if(!current?.start)continue;
+  let previous=[...r.contracts].filter(c=>c.status==='Previous'&&c.start&&c.end&&c.end<current.start).sort((a,b)=>b.end.localeCompare(a.end))[0];
+  let period=previous&&r.trainingPeriods.find(p=>p.contractId===previous.id||(p.start===previous.start&&p.end===previous.end));
+  if(!period&&!previous)period=[...r.trainingPeriods].filter(p=>p.id!==r.trainingCurrentId&&p.end<current.start).sort((a,b)=>b.end.localeCompare(a.end))[0];
+  if(!previous){
+    const end=period?.end||isoShift(current.start,-1),start=period?.start||isoShift(end,-364);
+    const contractId=r.contracts.some(c=>c.id===id+'-PREV')?id+'-DEMO-PREV':id+'-PREV';
+    previous={id:contractId,status:'Previous',start,end,accountManager:r.manager,cost:2800+index*350,autoRenew:false,comment:'Completed synthetic service agreement.',training:1.5};
+    r.contracts.push(previous);
+  }
+  if(period&&!period.contractId)period.contractId=previous.id;
+  if(!period){
+    const periodId=r.trainingPeriods.some(p=>p.id==='TP-example-previous')?'TP-example-previous-'+id:'TP-example-previous';
+    period={id:periodId,contractId:previous.id,start:previous.start,end:previous.end,available:3,sessions:[]};
+    r.trainingPeriods.push(period);
+  }
+  if(period.sessions.length===0&&Number(period.available)>=1.5&&period.start<=period.end){
+    period.sessions=sampleHistoricalDays(period.start,period.end,'T-example-history-');
+  }
+  r.demoExamplesVersion=3;examplesAdded=true;
 }
 function roundDays(n){return Math.round((n+Number.EPSILON)*100)/100}
 function usedDays(p){return roundDays(p.sessions.reduce((n,s)=>n+Number(s.days),0))}
