@@ -44,7 +44,7 @@ function renderTraining(){
     const heading=el('div',undefined,'training-contract-heading'),identity=el('div');
     identity.append(el('h3','Contract dates: '+date(contract?.start||p.start)+' – '+date(contract?.end||p.end)));
     const badge=el('span',historical?'Historical':'Current','record-status '+(historical?'status-Previous':'status-Current'));
-    const available=Number(p.available),used=usedDays(p),remaining=roundDays(available-used);
+    const available=Number(p.available);
     const controls=el('div',undefined,'training-contract-controls'),edit=el('button','Edit period'),remove=el('button','Delete period','delete-button');
     edit.onclick=()=>editTrainingPeriod(false,p.id);remove.onclick=()=>deleteTrainingPeriod(p.id);
     controls.append(badge,edit,remove);heading.append(identity,controls);section.append(heading);
@@ -52,9 +52,9 @@ function renderTraining(){
     add.disabled=historical;
     if(historical)add.title='Training days cannot be added to a historical contract.';
     add.onclick=()=>editTrainingSession(undefined,p.id);daysHead.append(add);section.append(daysHead);
-    const wrap=el('div',undefined,'tablewrap'),table=el('table',undefined,'simple-table training-table'),thead=el('thead'),headerRow=el('tr'),tbody=el('tbody'),tfoot=el('tfoot');
+    const wrap=el('div',undefined,'tablewrap'),table=el('table',undefined,'simple-table training-table'),thead=el('thead'),headerRow=el('tr'),tbody=el('tbody');
     for(const label of ['Training date','Title','HED contact','Location','Days taken','Days remaining','Summary','Action'])headerRow.append(el('th',label));
-    thead.append(headerRow);table.append(thead,tbody,tfoot);wrap.append(table);section.append(wrap);
+    thead.append(headerRow);table.append(thead,tbody);wrap.append(table);section.append(wrap);
     let balance=available;
     const rows=[...p.sessions].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id)).map(s=>{balance=roundDays(balance-s.days);return {...s,balance}}).filter(s=>(s.title+' '+s.hedContact+' '+s.location+' '+s.summary).toLowerCase().includes(q));
     rows.forEach(s=>{
@@ -69,8 +69,6 @@ function renderTraining(){
       group.append(editDay,removeDay);cell.append(group);row.append(cell);tbody.append(row);
     });
     if(!rows.length)tableEmpty(tbody,8,q?'No training days match your search in this contract.':'No training days recorded for this contract.');
-    const totals=el('tr'),allowance=el('th','Contract total · Allowance: '+available.toFixed(2)+' days');allowance.colSpan=4;allowance.scope='row';totals.append(allowance,el('td',used.toFixed(2)),el('td',remaining.toFixed(2)));
-    const spacer=el('td');spacer.colSpan=2;totals.append(spacer);tfoot.append(totals);
     host.append(section);
   });
 }

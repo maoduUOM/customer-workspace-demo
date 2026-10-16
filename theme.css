@@ -17,8 +17,6 @@
 .training-contract-controls{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 .training-contract-controls .record-status{margin-right:8px}
 .training-contract-section .training-days-heading{margin-top:18px}
-.training-table tfoot th,.training-table tfoot td{position:static;background:#f0f5eb;border-top:2px solid #d8e4cf;border-bottom:0;color:#315323;font-weight:700}
-.training-table tfoot th{text-align:left;font-size:12px;text-transform:none;letter-spacing:0}
 @media(max-width:700px){.training-contract-heading{flex-direction:column}.training-contract-controls{justify-content:flex-start}}
 
 .licence-table{max-width:900px}.licence-table th:last-child,.licence-table td:last-child{width:150px;text-align:center}.licence-table input{width:21px;height:21px}.licence-table label{display:block;cursor:pointer;padding:4px 0}.tabs{overflow-x:auto;white-space:nowrap}
