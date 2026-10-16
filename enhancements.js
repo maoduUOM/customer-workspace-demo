@@ -14,4 +14,26 @@ function downloadCSV(name,headers,rows){const url=URL.createObjectURL(new Blob([
 function exportPortfolio(){const rows=getRows();if(view==='Implementation')downloadCSV('customer-implementation.csv',implementationFields,rows.map(r=>implementationFields.map(k=>k==='CustomerID'?r.id:k==='Comment'?r.implementation.Comment:r.implementation[k]?'Yes':'No')));else downloadCSV('customers-'+view.toLowerCase()+'.csv',['CustomerID','Customer','Account manager','Region','Address','Postcode','Telephone','NHS type','Multiple trusts','Contract ends','Contracted days remaining','Training days remaining','Next account review','Days since last review','Auto renew','Status','Licence packages'],rows.map(r=>[r.id,r.name,r.manager,r.region,r.address,r.postcode,r.telephone,r.nhsType,r.multipleTrusts?'Yes':'No',contractEnd(r),daysRemainingFor(r)??'',trainingDaysFor(r),r.status==='Archive'?'':r.review,r.status==='Archive'?'':r.last,r.autoRenew?'Yes':'No',r.status,selectedLicences(r).join('; ')]))}
 function exportContacts(){downloadCSV('customer-contacts.csv',['CustomerID','Name','Job title','Email','Phone','Main contact','Secondary contact','Super user','User Status'],sortedContacts().map(c=>[current.id,c.name,c.job,c.email,c.phone,c.main?'Yes':'No',c.secondary?'Yes':'No',c.superUser?'Yes':'No',c.userStatus||'Active']))}
 function deleteContract(id){const owner=current,index=owner.contracts.findIndex(c=>c.id===id);if(index<0)return;const snapshot={start:owner.start,end:owner.end,autoRenew:owner.autoRenew};const [removed]=owner.contracts.splice(index,1);if(removed.status==='Current')Object.assign(owner,{start:'',end:'',autoRenew:false});const saved=persist();refresh();renderRows();const undo=el('button','Undo');undo.onclick=()=>{if(removed.status==='Current')owner.contracts.forEach(c=>{if(c.status==='Current')c.status='Previous'});owner.contracts.splice(index,0,removed);if(removed.status==='Current')Object.assign(owner,snapshot);persist();refresh();renderRows()};if(saved)showUndo('Contract '+removed.id+' deleted.',undo)}
-function createCustomer(){editor('Create new customer',[{key:'id',label:'Customer code',required:true,maxLength:32,placeholder:'e.g. CUS001'},{key:'name',label:'Customer name',required:true,wide:true},{key:'manager',label:'Account manager',required:true},{key:'region',label:'Region',required:true},{key:'address',label:'Customer address',type:'textarea',wide:true},{key:'postcode',label:'Postcode'},{key:'telephone',label:'Customer telephone',type:'tel'},{key:'nhsType',label:'NHS type',value:'NHS Trust',options:nhsTypes},{key:'status',label:'Status',value:'Active',options:['Active','Archive']},{key:'multipleTrusts',label:'Multiple trusts',type:'checkbox'},{key:'autoRenew',label:'Auto renew',type:'checkbox'},{key:'start',label:'Contract start',type:'date',required:true},{key:'end',label:'Contract end',type:'date',required:true},{key:'training',label:'Training allowance (days)',type:'number',value:0,required:true}],(v,inputs)=>{if(v.end<v.start)return rejectInput(inputs.end,'End date must be on or after start date.');if(v.status==='Archive'&&v.end>=todayISO())return rejectInput(inputs.status,archiveMessage);if(!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(v.id))return rejectInput(inputs.id,'Use letters, numbers, hyphens or underscores, with no spaces.');if(data.some(r=>r.id.toLowerCase()===v.id.toLowerCase()))return rejectInput(inputs.id,'This customer code already exists.');const id=v.id,impl={Comment:''};booleanFields.forEach(k=>impl[k]=false);const r={...v,id,licences:[],review:'',last:'',notes:'',contacts:[],implementation:impl,contracts:[{id:id+'-001',start:v.start,end:v.end,training:v.training,autoRenew:v.autoRenew,status:'Current',accountManager:v.manager,cost:'',comment:''}],trainingPeriods:[{id:'TP-initial',contractId:id+'-001',start:v.start,end:v.end,available:v.training,sessions:[]}],trainingCurrentId:'TP-initial'};data.push(r);current=r;selectedTrainingId=r.trainingCurrentId;view=r.status==='Archive'?'Archived':r.status;showDetail(id)})}
+function createCustomer(){
+  editor('Create new customer',[
+    {key:'id',label:'Customer code',required:true,maxLength:32,placeholder:'e.g. CUS001'},
+    {key:'name',label:'Customer name',required:true,wide:true},
+    {key:'manager',label:'Account manager',required:true},
+    {key:'region',label:'Region',required:true},
+    {key:'address',label:'Customer address',type:'textarea',wide:true},
+    {key:'postcode',label:'Postcode'},
+    {key:'telephone',label:'Customer telephone',type:'tel'},
+    {key:'nhsType',label:'NHS type',value:'NHS Trust',options:nhsTypes},
+    {key:'status',label:'Status',value:'Active',options:['Active','Archive']},
+    {key:'multipleTrusts',label:'Multiple trusts',type:'checkbox'}
+  ],(v,inputs)=>{
+    if(v.status==='Archive')return rejectInput(inputs.status,archiveMessage);
+    if(!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(v.id))return rejectInput(inputs.id,'Use letters, numbers, hyphens or underscores, with no spaces.');
+    if(data.some(r=>r.id.toLowerCase()===v.id.toLowerCase()))return rejectInput(inputs.id,'This customer code already exists.');
+    const impl={Comment:''};booleanFields.forEach(k=>impl[k]=false);
+    const r={...v,start:'',end:'',training:0,autoRenew:false,licences:[],review:'',last:'',notes:'',contacts:[],implementation:impl,contracts:[],trainingPeriods:[],trainingCurrentId:''};
+    data.push(r);current=r;selectedTrainingId='';view='Active';showDetail(r.id);
+  });
+  $('edit-status').querySelector('option[value="Archive"]').disabled=true;
+  $('edit-status').title=archiveMessage;
+}

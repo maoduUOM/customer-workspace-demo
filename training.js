@@ -36,7 +36,8 @@ function trainingPeriod(){return current.trainingPeriods.find(p=>p.id===selected
 function historicalTrainingPeriod(p,contract){return p.id!==current.trainingCurrentId||p.end<todayISO()||contract?.status==='Previous'||Boolean(contract?.end&&contract.end<todayISO())}
 function renderTraining(){
   const host=$('trainingPeriodRows'),q=$('trainingSearch').value.toLowerCase().trim();host.replaceChildren();
-  if(!current.trainingPeriods.length){host.append(el('p','No training periods. Add a period to record training.','record-empty'));return}
+  const addPeriod=$('addTrainingPeriod');addPeriod.disabled=!current.contracts.length;addPeriod.title=current.contracts.length?'':'Add a contract before adding a training period.';
+  if(!current.trainingPeriods.length){host.append(el('p',current.contracts.length?'No training periods. Add a period to record training.':'No training periods yet. Add a contract first.','record-empty'));return}
   [...current.trainingPeriods].sort((a,b)=>b.start.localeCompare(a.start)).forEach(p=>{
     const contract=current.contracts.find(c=>c.id===p.contractId)||current.contracts.find(c=>c.start===p.start&&c.end===p.end);
     const historical=historicalTrainingPeriod(p,contract);

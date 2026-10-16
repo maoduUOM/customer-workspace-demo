@@ -27,7 +27,7 @@ const canArchive=r=>{const signed=r.contracts.filter(c=>c.status!=='Draft');retu
 const archiveMessage='Archive is available only after all non-draft contracts have ended.';
 for(const r of data)if(r.status==='Archive'&&!canArchive(r))r.status='Active';
 const daysRemainingFor=r=>r.status==='Archive'?0:daysUntil(contractEnd(r));
-const trainingDaysFor=r=>r.status==='Archive'?0:Number(r.training)||0;
+const trainingDaysFor=r=>r.status==='Archive'?0:r.trainingPeriods?.length?Number(r.training)||0:null;
 const daysText=n=>n===null?'Not set':n+' '+(n===1?'day':'days');
 function el(tag,text,className){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e}
 function persist(){const notice=$('notice');try{localStorage.setItem('trust-portfolio-demo-v1',JSON.stringify(data));notice.replaceChildren();notice.classList.add('hide');return true}catch{notice.textContent='Unable to save: browser storage is unavailable or full. Changes will be lost on reload.';notice.classList.remove('hide');return false}}
@@ -98,7 +98,7 @@ function appendAccountControls(r,groups){
     {key:'nhsType',label:'NHS type',options:nhsTypes,group:groups.customer},
     {key:'status',label:'Status',options:r.status==='Implementation'?['','Active','Archive']:['Active','Archive'],group:groups.customer},
     {key:'multipleTrusts',label:'Multiple trusts',group:groups.customer},
-    {key:'autoRenew',label:'Auto renew',group:groups.contract}
+    ...(currentContract(r)?[{key:'autoRenew',label:'Auto renew',group:groups.contract}]:[])
   ]){
     const label=el('label',undefined,'account-control');label.append(el('span',spec.label,'label'));
     const input=el(spec.options?'select':'input');
@@ -139,7 +139,7 @@ function editAccount(){
     {key:'status',label:'Status',value:r.status==='Implementation'?'':r.status,options:r.status==='Implementation'?['','Active','Archive']:['Active','Archive']},
     {key:'nhsType',label:'NHS type',value:r.nhsType,options:nhsTypes},
     {key:'multipleTrusts',label:'Multiple trusts',type:'checkbox',value:r.multipleTrusts},
-    {key:'autoRenew',label:'Auto renew contract',type:'checkbox',value:r.autoRenew},
+    ...(c?[{key:'autoRenew',label:'Auto renew contract',type:'checkbox',value:r.autoRenew}]:[]),
     ...(c?[{key:'start',label:'Contract start',type:'date',value:c.start,required:true},{key:'end',label:'Current contract end',type:'date',value:c.end,required:true}]:[]),
     {key:'review',label:'Next account review',type:'date',value:r.review}
   ];
