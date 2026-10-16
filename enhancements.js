@@ -1,7 +1,23 @@
 const licencePackages=['Full Provider Licence','Full Commissioner Licence','Marketshare','Activity','Mortality with ONS','Mortality without ONS'];
-for(const r of data)r.licences??=[];
+const alertOptions=['Alert1','Alert2','Alert3','Alert4'];
+const demoAlertDefaults={DEMO001:['Alert1','Alert2'],DEMO002:['Alert3'],DEMO003:['Alert4']};
+for(const r of data){r.licences??=[];r.alerts??=[...(demoAlertDefaults[r.id]||[])]}
 function selectedLicences(r){return licencePackages.filter(name=>(r.licences||[]).includes(name))}
+function selectedAlerts(r){return alertOptions.filter(name=>(r.alerts||[]).includes(name))}
 function renderLicences(){current.licences??=[];$('licenceRows').replaceChildren();licencePackages.forEach((name,i)=>{const row=el('tr'),nameCell=el('td'),label=el('label',name),cell=el('td'),input=el('input');input.type='checkbox';input.id='licence-option-'+i;label.htmlFor=input.id;input.checked=current.licences.includes(name);input.setAttribute('aria-label',name+' covered');input.onchange=()=>{const selected=new Set(current.licences);if(input.checked)selected.add(name);else selected.delete(name);current.licences=[...selected];persist();refresh()};nameCell.append(label);cell.append(input);row.append(nameCell,cell);$('licenceRows').append(row)});const n=selectedLicences(current).length;$('licenceCount').textContent=n+' selected';$('licenceNote').textContent=n?'Coverage is recorded per customer.':'No packages selected. Coverage has not been recorded for this customer.'}
+function renderAlerts(){
+  $('alertRows').replaceChildren();
+  alertOptions.forEach((name,i)=>{
+    const row=el('tr'),nameCell=el('td'),label=el('label',name),cell=el('td'),input=el('input');
+    input.type='checkbox';input.id='alert-option-'+i;label.htmlFor=input.id;
+    input.checked=current.alerts.includes(name);input.setAttribute('aria-label',name+' selected');
+    input.onchange=()=>{const selected=new Set(current.alerts);if(input.checked)selected.add(name);else selected.delete(name);current.alerts=alertOptions.filter(option=>selected.has(option));persist();refresh()};
+    nameCell.append(label);cell.append(input);row.append(nameCell,cell);$('alertRows').append(row);
+  });
+  const count=selectedAlerts(current).length;
+  $('alertCount').textContent=count+' selected';
+  $('alertNote').textContent=count?'Alerts are recorded for this customer.':'No alerts selected.';
+}
 for(const r of data){r.address??='';r.postcode??='';r.telephone??='';for(const c of r.contacts)c.userStatus??='Active'}
 let customerSortKey='name',customerSortDirection=1,contactSortDirection=1;
 const customerColumns=['name','manager','region','end','days','training','review','last','autoRenew','status'];
@@ -11,7 +27,7 @@ function sortedContacts(){return [...current.contacts].sort((a,b)=>(a.userStatus
 function toggleContactSort(){contactSortDirection*=-1;$('contactStatusSort').textContent='User Status '+(contactSortDirection===1?'↑':'↓');renderContacts()}
 function csvText(headers,rows){const cell=v=>{let s=String(v??'');if(/^[\s]*[=+@-]/.test(s)||/^[\t\r\n]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};return '\ufeff'+[headers,...rows].map(row=>row.map(cell).join(',')).join('\r\n')}
 function downloadCSV(name,headers,rows){const url=URL.createObjectURL(new Blob([csvText(headers,rows)],{type:'text/csv;charset=utf-8;'})),a=el('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function exportPortfolio(){const rows=getRows();if(view==='Implementation')downloadCSV('customer-implementation.csv',implementationFields,rows.map(r=>implementationFields.map(k=>k==='CustomerID'?r.id:k==='Comment'?r.implementation.Comment:r.implementation[k]?'Yes':'No')));else downloadCSV('customers-'+view.toLowerCase()+'.csv',['CustomerID','Customer','Account manager','Region','Address','Postcode','Telephone','NHS type','Multiple trusts','Contract ends','Contracted days remaining','Training days remaining','Next account review','Days since last review','Auto renew','Status','Licence packages'],rows.map(r=>[r.id,r.name,r.manager,r.region,r.address,r.postcode,r.telephone,r.nhsType,r.multipleTrusts?'Yes':'No',contractEnd(r),daysRemainingFor(r)??'',trainingDaysFor(r),r.status==='Archive'?'':r.review,r.status==='Archive'?'':r.last,r.autoRenew?'Yes':'No',r.status,selectedLicences(r).join('; ')]))}
+function exportPortfolio(){const rows=getRows();if(view==='Implementation')downloadCSV('customer-implementation.csv',implementationFields,rows.map(r=>implementationFields.map(k=>k==='CustomerID'?r.id:k==='Comment'?r.implementation.Comment:r.implementation[k]?'Yes':'No')));else downloadCSV('customers-'+view.toLowerCase()+'.csv',['CustomerID','Customer','Account manager','Region','Address','Postcode','Telephone','NHS type','Multiple trusts','Contract ends','Contracted days remaining','Training days remaining','Next account review','Days since last review','Auto renew','Status','Licence packages','Alerts'],rows.map(r=>[r.id,r.name,r.manager,r.region,r.address,r.postcode,r.telephone,r.nhsType,r.multipleTrusts?'Yes':'No',contractEnd(r),daysRemainingFor(r)??'',trainingDaysFor(r),r.status==='Archive'?'':r.review,r.status==='Archive'?'':r.last,r.autoRenew?'Yes':'No',r.status,selectedLicences(r).join('; '),selectedAlerts(r).join('; ')]))}
 function exportContacts(){downloadCSV('customer-contacts.csv',['CustomerID','Name','Job title','Email','Phone','Main contact','Secondary contact','Super user','User Status'],sortedContacts().map(c=>[current.id,c.name,c.job,c.email,c.phone,c.main?'Yes':'No',c.secondary?'Yes':'No',c.superUser?'Yes':'No',c.userStatus||'Active']))}
 function deleteContract(id){const owner=current,index=owner.contracts.findIndex(c=>c.id===id);if(index<0)return;const snapshot={start:owner.start,end:owner.end,autoRenew:owner.autoRenew};const [removed]=owner.contracts.splice(index,1);if(removed.status==='Current')Object.assign(owner,{start:'',end:'',autoRenew:false});const saved=persist();refresh();renderRows();const undo=el('button','Undo');undo.onclick=()=>{if(removed.status==='Current')owner.contracts.forEach(c=>{if(c.status==='Current')c.status='Previous'});owner.contracts.splice(index,0,removed);if(removed.status==='Current')Object.assign(owner,snapshot);persist();refresh();renderRows()};if(saved)showUndo('Contract '+removed.id+' deleted.',undo)}
 function createCustomer(){
@@ -31,7 +47,7 @@ function createCustomer(){
     if(!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(v.id))return rejectInput(inputs.id,'Use letters, numbers, hyphens or underscores, with no spaces.');
     if(data.some(r=>r.id.toLowerCase()===v.id.toLowerCase()))return rejectInput(inputs.id,'This customer code already exists.');
     const impl={Comment:''};booleanFields.forEach(k=>impl[k]=false);
-    const r={...v,start:'',end:'',training:0,autoRenew:false,licences:[],review:'',last:'',notes:'',contacts:[],implementation:impl,contracts:[],trainingPeriods:[],trainingCurrentId:''};
+    const r={...v,start:'',end:'',training:0,autoRenew:false,licences:[],alerts:[],review:'',last:'',notes:'',contacts:[],implementation:impl,contracts:[],trainingPeriods:[],trainingCurrentId:''};
     data.push(r);current=r;selectedTrainingId='';view='Active';showDetail(r.id);
   });
   $('edit-status').querySelector('option[value="Archive"]').disabled=true;

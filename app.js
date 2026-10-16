@@ -86,9 +86,16 @@ function refresh(){
   if(packages.length){const list=el('ul',undefined,'licence-summary');packages.forEach(name=>list.append(el('li',name)));licence.append(list)}
   else licence.append(el('p','Not recorded','account-empty'));
   const manage=el('button','Manage licences','textbutton');manage.onclick=()=>tab('licence');licence.append(manage);
+  const alerts=el('section',undefined,'alert-overview');
+  alerts.append(el('h3','Alert'));
+  const chosenAlerts=selectedAlerts(r);
+  if(chosenAlerts.length){const list=el('ul',undefined,'licence-summary');chosenAlerts.forEach(name=>list.append(el('li',name)));alerts.append(list)}
+  else alerts.append(el('p','Not recorded','account-empty'));
+  const manageAlerts=el('button','Manage alerts','textbutton');manageAlerts.onclick=()=>tab('alerts');alerts.append(manageAlerts);
+  licence.append(alerts);
   appendAccountControls(r,{customer,contract});
   $('notes').textContent=r.notes||'No notes added.';
-  makeHead($('detailImplHead'),implementationFields);$('detailImplRows').replaceChildren(implementationRow(r));updateSummary();renderContacts();renderContracts();renderLicences();renderTraining();
+  makeHead($('detailImplHead'),implementationFields);$('detailImplRows').replaceChildren(implementationRow(r));updateSummary();renderContacts();renderContracts();renderLicences();renderAlerts();renderTraining();
 }
 
 function tableEmpty(target,cols,text){const row=el('tr'),cell=el('td',text,'empty-row');cell.colSpan=cols;row.append(cell);target.append(row)}
