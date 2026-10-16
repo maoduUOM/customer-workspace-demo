@@ -24,7 +24,7 @@ if(!Array.isArray(data)){
       address:(20+i)+' Example Lane, '+place,
       postcode:'ZZ1 1ZZ',
       telephone:'01632 960'+String(100+i).padStart(3,'0'),
-      notes:first?'Fictional demonstration account. Contract review is planned for November 2026. All names, contact details and figures are illustrative.':'Fictional demonstration account. All names, contact details and figures are illustrative.',
+      notes:first?'Synthetic demonstration account. Contract review is planned for November 2026. All names, contact details and figures are illustrative.':'Synthetic demonstration account. All names, contact details and figures are illustrative.',
       checks:items.map((_,j)=>j<(i%16)),
       contacts:first?[
         {id:'C1',name:'Casey Rowan',job:'Information Manager',email:'casey.rowan@example.invalid',phone:'01632 960101',type:'Primary'},
