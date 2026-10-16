@@ -12,7 +12,10 @@ for(let i=5;i<10;i++){
   r.start=c.start='2025-01-01';r.end=c.end=end;
   if(r.trainingPeriods?.length===1&&r.trainingPeriods[0].end===oldEnd){r.trainingPeriods[0].start='2025-01-01';r.trainingPeriods[0].end=end}
 }
-for(const r of data)for(const c of r.contacts){c.main??=c.type==='Primary';c.secondary??=c.type==='Secondary';c.cost??=''}
+for(const r of data){
+  for(const c of r.contacts){c.main??=c.type==='Primary';c.secondary??=c.type==='Secondary';c.superUser??=false;delete c.cost}
+  for(const c of r.contracts){c.accountManager??=r.manager||'';c.cost??='';c.comment??=''}
+}
 for(const r of data)if(typeof r.notes==='string')r.notes=r.notes.replace(/^Fictional demonstration account\./,'Synthetic demonstration account.');
 let view='Active',page=1,current=data[0],activeTab='overview';
 const date=v=>v?new Date(v+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'Not set';
@@ -88,7 +91,7 @@ function refresh(){
 }
 
 function tableEmpty(target,cols,text){const row=el('tr'),cell=el('td',text,'empty-row');cell.colSpan=cols;row.append(cell);target.append(row)}
-function renderContacts(){$('contactRows').replaceChildren();sortedContacts().forEach(c=>{const row=el('tr');[c.name,c.job,c.email,c.phone].forEach((v,i)=>{const cell=el('td');if((i===2||i===3)&&v){const a=el('a',v);a.href=(i===2?'mailto:':'tel:')+v;cell.append(a)}else cell.textContent=v||'—';row.append(cell)});for(const [key,label] of [['main','Main contact'],['secondary','Secondary contact']]){const cell=el('td'),input=el('input');input.type='checkbox';input.className='contact-checkbox';input.checked=!!c[key];input.setAttribute('aria-label',c.name+' · '+label);input.onchange=()=>{c[key]=input.checked;persist()};cell.append(input);row.append(cell)}row.append(el('td',c.cost===''?'—':new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(c.cost)));const statusCell=el('td'),statusSelect=el('select');['Active','Inactive'].forEach(v=>statusSelect.add(new Option(v,v)));statusSelect.value=c.userStatus||'Active';statusSelect.setAttribute('aria-label',c.name+' · User Status');statusSelect.onchange=()=>{c.userStatus=statusSelect.value;persist();renderContacts()};statusCell.append(statusSelect);row.append(statusCell);const cell=el('td'),group=el('div',undefined,'action-group'),b=el('button','Edit'),del=el('button','Delete','delete-button');b.onclick=()=>editContact(c.id);del.onclick=()=>deleteContact(c.id);group.append(b,del);cell.append(group);row.append(cell);$('contactRows').append(row)});if(!current.contacts.length)tableEmpty($('contactRows'),9,'No contacts yet. Create a new contact to get started.')}
+function renderContacts(){$('contactRows').replaceChildren();sortedContacts().forEach(c=>{const row=el('tr');[c.name,c.job,c.email,c.phone].forEach((v,i)=>{const cell=el('td');if((i===2||i===3)&&v){const a=el('a',v);a.href=(i===2?'mailto:':'tel:')+v;cell.append(a)}else cell.textContent=v||'—';row.append(cell)});for(const [key,label] of [['main','Main contact'],['secondary','Secondary contact'],['superUser','Super user']]){const cell=el('td'),input=el('input');input.type='checkbox';input.className='contact-checkbox';input.checked=!!c[key];input.setAttribute('aria-label',c.name+' · '+label);input.onchange=()=>{c[key]=input.checked;persist()};cell.append(input);row.append(cell)}const statusCell=el('td'),statusSelect=el('select');['Active','Inactive'].forEach(v=>statusSelect.add(new Option(v,v)));statusSelect.value=c.userStatus||'Active';statusSelect.setAttribute('aria-label',c.name+' · User Status');statusSelect.onchange=()=>{c.userStatus=statusSelect.value;persist();renderContacts()};statusCell.append(statusSelect);row.append(statusCell);const cell=el('td'),group=el('div',undefined,'action-group'),b=el('button','Edit'),del=el('button','Delete','delete-button');b.onclick=()=>editContact(c.id);del.onclick=()=>deleteContact(c.id);group.append(b,del);cell.append(group);row.append(cell);$('contactRows').append(row)});if(!current.contacts.length)tableEmpty($('contactRows'),9,'No contacts yet. Create a new contact to get started.')}
 function deleteContact(id){const owner=current,index=owner.contacts.findIndex(c=>c.id===id);if(index<0)return;const [removed]=owner.contacts.splice(index,1),saved=persist();renderContacts();const undo=el('button','Undo');undo.onclick=()=>{owner.contacts.splice(index,0,removed);persist();if(current.id===owner.id)renderContacts()};if(saved)showUndo(removed.name+' deleted.',undo)}
 function appendAccountControls(r,groups){
   for(const spec of [
@@ -107,7 +110,7 @@ function appendAccountControls(r,groups){
   }
 }
 
-function renderContracts(){$('contractRows').replaceChildren();current.contracts.forEach(c=>{const row=el('tr');[c.id,date(c.start),date(c.end),daysText(daysUntil(c.end)),c.autoRenew,c.status].forEach((v,i)=>{const td=el('td');if(i===4){const input=el('input');input.type='checkbox';input.checked=!!c.autoRenew;input.setAttribute('aria-label',c.id+' · Auto renew');input.onchange=()=>{c.autoRenew=input.checked;if(c.status==='Current')current.autoRenew=c.autoRenew;persist();refresh();renderRows()};td.append(input)}else td.textContent=String(v);row.append(td)});const cell=el('td'),b=el('button','Edit');b.onclick=()=>editContract(c.id);const del=el('button','Delete','delete-button');del.onclick=()=>deleteContract(c.id);cell.append(b,document.createTextNode(' '),del);row.append(cell);$('contractRows').append(row)});if(!current.contracts.length)tableEmpty($('contractRows'),7,'No contracts added.')}
+function renderContracts(){$('contractRows').replaceChildren();current.contracts.forEach(c=>{const row=el('tr'),remaining=current.status==='Archive'?0:daysUntil(c.end);[c.id,c.status,date(c.start),date(c.end),daysText(remaining),c.accountManager||'—',c.cost===''?'—':new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(c.cost)].forEach((v,i)=>{const cell=el('td',String(v));if(i===4&&remaining!==null)cell.className=remaining<60?'days-critical':remaining<100?'days-warning':'';row.append(cell)});const renewCell=el('td'),input=el('input');input.type='checkbox';input.checked=!!c.autoRenew;input.setAttribute('aria-label',c.id+' · Auto renew');input.onchange=()=>{c.autoRenew=input.checked;if(c.status==='Current')current.autoRenew=c.autoRenew;persist();refresh();renderRows()};renewCell.append(input);row.append(renewCell,el('td',c.comment||'—'));const cell=el('td'),b=el('button','Edit');b.onclick=()=>editContract(c.id);const del=el('button','Delete','delete-button');del.onclick=()=>deleteContract(c.id);cell.append(b,document.createTextNode(' '),del);row.append(cell);$('contractRows').append(row)});if(!current.contracts.length)tableEmpty($('contractRows'),10,'No contracts added.')}
 function editor(title,specs,onSave){$('modalTitle').textContent=title;$('modalFields').replaceChildren();const inputs={};specs.forEach(s=>{const label=el('label');if(s.wide)label.className='wide';label.append(el('span',s.label,'field-label'));const input=el(s.options?'select':s.type==='textarea'?'textarea':'input');input.id='edit-'+s.key;input.name=s.key;if(s.options)s.options.forEach(v=>input.add(new Option(v===''?'Choose status':v==='Archive'?'Archived':v,v)));else if(s.type!=='textarea')input.type=s.type||'text';else input.rows=6;if(s.type==='checkbox')input.checked=!!s.value;else input.value=s.value??'';if(s.required)input.required=true;if(s.maxLength)input.maxLength=s.maxLength;if(s.placeholder)input.placeholder=s.placeholder;if(s.type==='number'){input.min=0;input.step=s.step||'0.01'}inputs[s.key]=input;label.append(input);$('modalFields').append(label)});$('editForm').onsubmit=e=>{e.preventDefault();const values={};specs.forEach(s=>values[s.key]=s.type==='checkbox'?inputs[s.key].checked:s.type==='number'?Number(inputs[s.key].value):inputs[s.key].value.trim());if(onSave(values,inputs)===false)return;persist();refresh();renderRows();$('modal').close()};$('modal').showModal()}
 function editAccount(){
   const r=current,c=currentContract(r);
@@ -130,26 +133,30 @@ function editAccount(){
     if(!v.status)v.status=r.status;
     if(v.status==='Archive'&&!canArchive({...r,contracts:r.contracts.map(x=>x===c?{...x,end:v.end}:x)}))return rejectInput(inputs.status,archiveMessage);
     Object.assign(r,v);
-    if(c)Object.assign(c,{start:v.start,end:v.end,autoRenew:v.autoRenew});
+    if(c)Object.assign(c,{start:v.start,end:v.end,autoRenew:v.autoRenew,accountManager:v.manager});
   });
 }
 function editNotes(){editor('Edit key notes',[{key:'notes',label:'Notes',type:'textarea',value:current.notes,wide:true}],v=>{current.notes=v.notes})}
-function editContact(id){const c=current.contacts.find(c=>c.id===id)||{name:'',job:'',email:'',phone:'',main:false,secondary:false,cost:''};editor(id?'Edit contact':'Create new contact',[{key:'name',label:'Full name',value:c.name,required:true},{key:'job',label:'Job title',value:c.job},{key:'email',label:'Email',type:'email',value:c.email},{key:'phone',label:'Phone',type:'tel',value:c.phone},{key:'main',label:'Main contact',type:'checkbox',value:c.main},{key:'secondary',label:'Secondary contact',type:'checkbox',value:c.secondary},{key:'cost',label:'Cost (£)',type:'number',value:c.cost},{key:'userStatus',label:'User Status',value:c.userStatus||'Active',options:['Active','Inactive']}],(v,inputs)=>{if(inputs.cost.value==='')v.cost='';if(id)Object.assign(c,v);else current.contacts.push({id:'C-'+crypto.randomUUID(),...v})})}
+function editContact(id){const c=current.contacts.find(c=>c.id===id)||{name:'',job:'',email:'',phone:'',main:false,secondary:false,superUser:false};editor(id?'Edit contact':'Create new contact',[{key:'name',label:'Full name',value:c.name,required:true},{key:'job',label:'Job title',value:c.job},{key:'email',label:'Email',type:'email',value:c.email},{key:'phone',label:'Phone',type:'tel',value:c.phone},{key:'main',label:'Main contact',type:'checkbox',value:c.main},{key:'secondary',label:'Secondary contact',type:'checkbox',value:c.secondary},{key:'superUser',label:'Super user',type:'checkbox',value:c.superUser},{key:'userStatus',label:'User Status',value:c.userStatus||'Active',options:['Active','Inactive']}],v=>{if(id)Object.assign(c,v);else current.contacts.push({id:'C-'+crypto.randomUUID(),...v})})}
 function editContract(id){
-  const c=current.contracts.find(c=>c.id===id)||{id:current.id+'-'+String(current.contracts.length+1).padStart(3,'0'),start:'',end:'',training:0,autoRenew:false,status:'Draft'};
+  const c=current.contracts.find(c=>c.id===id)||{id:current.id+'-'+String(current.contracts.length+1).padStart(3,'0'),start:'',end:'',training:0,autoRenew:false,status:'Draft',accountManager:current.manager||'',cost:'',comment:''};
   editor(id?'Edit contract':'Add contract',[
     {key:'id',label:'Contract ID',value:c.id,required:true},
     {key:'status',label:'Contract status',value:c.status,options:['Draft','Current','Previous']},
     {key:'start',label:'Start date',type:'date',value:c.start,required:true},
     {key:'end',label:'End date',type:'date',value:c.end,required:true},
-    {key:'autoRenew',label:'Auto renew',type:'checkbox',value:c.autoRenew}
+    {key:'accountManager',label:'Account manager',value:c.accountManager||''},
+    {key:'cost',label:'Cost (£)',type:'number',value:c.cost},
+    {key:'autoRenew',label:'Auto renew',type:'checkbox',value:c.autoRenew},
+    {key:'comment',label:'Comment',type:'textarea',value:c.comment||'',wide:true}
   ],(v,inputs)=>{
     if(current.contracts.some(x=>x!==c&&x.id===v.id)){inputs.id.setCustomValidity('Use a unique contract ID.');inputs.id.reportValidity();inputs.id.oninput=()=>inputs.id.setCustomValidity('');return false}
     if(v.end<v.start){inputs.end.setCustomValidity('End date must be on or after start date.');inputs.end.reportValidity();inputs.end.oninput=()=>inputs.end.setCustomValidity('');return false}
     if(current.status==='Archive'&&v.status!=='Draft'&&v.end>=todayISO())return rejectInput(inputs.end,'Restore this customer before adding a non-draft contract that ends today or later.');
+    if(inputs.cost.value==='')v.cost='';
     if(v.status==='Current'){
       current.contracts.forEach(x=>{if(x!==c&&x.status==='Current')x.status='Previous'});
-      Object.assign(current,{start:v.start,end:v.end,autoRenew:v.autoRenew});
+      Object.assign(current,{start:v.start,end:v.end,autoRenew:v.autoRenew,manager:v.accountManager});
     }else if(c.status==='Current'){
       Object.assign(current,{start:'',end:'',autoRenew:false});
     }
