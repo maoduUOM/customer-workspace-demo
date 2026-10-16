@@ -21,7 +21,7 @@
 .training-contract-section .training-days-heading{margin-top:18px}
 @media(max-width:700px){.training-contract-heading{flex-direction:column}.training-contract-controls{justify-content:flex-start}}
 
-.licence-table{max-width:900px}.licence-table th:last-child,.licence-table td:last-child{width:150px;text-align:center}.licence-table input{width:21px;height:21px}.licence-table label{display:block;cursor:pointer;padding:4px 0}.tabs{overflow-x:auto;white-space:nowrap}
+.licence-table{max-width:900px;min-width:0}.licence-table th:last-child,.licence-table td:last-child{width:150px;text-align:center}.licence-table input{width:21px;height:21px}.licence-table label{display:block;cursor:pointer;padding:4px 0}.tabs{overflow-x:auto;white-space:nowrap}
 
 /* Desktop reading scale: distinct page, section, body, and supporting text. */
 body{font-family:Inter,"Segoe UI",system-ui,sans-serif;font-size:1rem;line-height:1.55}
