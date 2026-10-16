@@ -17,7 +17,6 @@ if(!Array.isArray(data)){
       region:regions[i%regions.length],
       status:i<5?'Active':i<10?'Archived':'Implementation',
       end:end.toISOString().slice(0,10),
-      days:45+i*13,
       training:2+i%6,
       start:'2026-05-01',
       review:'2026-11-'+String(2+i).padStart(2,'0'),
